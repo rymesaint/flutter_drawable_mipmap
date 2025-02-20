@@ -2,6 +2,7 @@ package com.sharmadhiraj.flutter_drawable_mipmap
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Bitmap.CompressFormat
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -34,12 +35,24 @@ class FlutterDrawableMipmapPlugin : FlutterPlugin, MethodCallHandler {
         if (call.method.equals("drawableMipmap")) {
             val name: String? = call.argument("name")
             val isDrawable: Boolean = call.argument("is_drawable") ?: false
-            val id: Int? = context?.resources?.getIdentifier(
+
+            if (name.isNullOrEmpty()) {
+                result.error("INVALID_NAME", "Resource name cannot be null or empty", null)
+                return
+            }
+
+            val id: Int = context?.resources?.getIdentifier(
                 name,
                 if (isDrawable) "drawable" else "mipmap",
                 context?.packageName
-            )
-            val drawable: Drawable? = ContextCompat.getDrawable(context!!, id!!)
+            ) ?: 0
+
+            if (id == 0) {
+                result.error("RESOURCE_NOT_FOUND", "Resource '$name' not found", null)
+                return
+            }
+
+            val drawable: Drawable? = ContextCompat.getDrawable(context!!, id)
             val byteArray = drawableToByteArray(drawable)
             result.success(byteArray)
         } else {
@@ -56,7 +69,18 @@ class FlutterDrawableMipmapPlugin : FlutterPlugin, MethodCallHandler {
             Log.e("FlutterDrawableMipmap", "Drawable is null")
             return ByteArray(0)
         }
-        val bitmap: Bitmap = (drawable as BitmapDrawable).bitmap
+        val bitmap = if (drawable is BitmapDrawable) {
+            drawable.bitmap
+        } else {
+            val bitmap = Bitmap.createBitmap(
+                drawable.intrinsicWidth, drawable.intrinsicHeight, Bitmap.Config.ARGB_8888
+            )
+            val canvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bitmap
+        }
+        
         val stream = ByteArrayOutputStream()
         bitmap.compress(CompressFormat.PNG, 100, stream)
         return stream.toByteArray()
