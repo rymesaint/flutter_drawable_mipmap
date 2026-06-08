@@ -25,7 +25,7 @@ android {
     if (project.android.hasProperty("namespace")) {
         namespace 'com.rymesaint.flutter_drawable_mipmap'
     }
-    compileSdkVersion 30
+    compileSdkVersion 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
